@@ -92,19 +92,32 @@ def handle_calculate_IK(req):
             
             return R_z
 
-        def Euler_angles_from_rotation_matrix(R):
+        def Euler_angles_from_matrix_xyz(R):
             '''Input R is 3x3 matrix, output are alpha, beta and gamma
             alpha: rotation angle along z axis,
             beta: rotation angle along y axis
             gamma: rotation angle along x axis'''
 
-            r11, r21, r31 = R[0,0], R[1,0], R[2,0]
-            r32, r33 = R[2,1], R[2,2]
-
+            r11, r12, r13 = R[0,0], R[0,1], R[0,2]
+            r31, r32, r33 = R[2,0], R[2,1], R[2,2] 
+            r21 = R[1,0]
             # Euler angles from rotation matrix
-            beta = atan2(-r31, sqrt(r11**2 + r21**2))
-            gamma = atan2(r32, r33)
-            alpha = atan2(r21, r11)
+            # beta = atan2(-r31, sqrt(r11**2 + r21**2))
+            # gamma = atan2(r32, r33)
+            # alpha = atan2(r21, r11)
+            if np.abs(r31) is not 1:
+                beta = atan2(-r31, sqrt(r11**2 + r21**2))
+                gamma = atan2(r32, r33)
+                alpha = atan2(r21, r11)
+            else:
+                alpha = 0
+                if r31 == -1:
+                    beta = pi/2
+                    gamma = alpha + atan2(r13, -r12)
+                else:
+                    beta = -pi/2
+                    gamma = -alpha + atan2(-r13, r12)
+
             return alpha, beta, gamma
 
 
@@ -114,7 +127,8 @@ def handle_calculate_IK(req):
         a0, a1, a2, a3, a4, a5, a6 = symbols('a0:7')
         alpha0, alpha1, alpha2, alpha3, alpha4, alpha5, alpha6 = symbols('alpha0:7')
         r, p, y = symbols("r p y") # end-effector orientation
-        R0_g_symp = simplify(rot_x(r) * rot_y(p) * rot_z(y))
+        
+        r2d = 180./np.pi
 
         # The Modified DH params
         s = {alpha0:       0, a0:      0, d1:  0.75,
@@ -153,6 +167,7 @@ def handle_calculate_IK(req):
 
             # Create individual transformation matrices
             T0_2 = simplify(T0_1 * T1_2)
+            p2_0_sym = T0_2 * Matrix([0,0,0,1])
             # R0_3 inv matrix would be used in R3_6
             T0_3 = simplify(T0_2 * T2_3)
             R0_3 = T0_3[0:3, 0:3]
@@ -164,20 +179,27 @@ def handle_calculate_IK(req):
 
             # R_corr = rot_z(pi) * rot_y(-pi/2)
             #T_total = simplify(T0_G * R_corr)
-            pickle.dump(T0_2, open("T0_2.p", "wb"))
+
+            
+            # R0_g_sym = simplify(rot_x(r) * rot_y(p) * rot_z(y))
+            R0_g_sym = simplify(rot_z(y) * rot_y(p) * rot_x(r))
+            # pickle.dump(T0_2, open("T0_2.p", "wb"))
+            pickle.dump(p2_0_sym, open("p2_0_sym.p", "wb"))
             pickle.dump(R0_3_inv, open("R0_3_inv.p", "wb"))
+            pickle.dump(R0_g_sym, open("R0_g_sym.p", "wb"))
             print("Transformation matrices have been saved!!")
             print("-----------------------------------------")
         else:
-            T0_2 = pickle.load(open("T0_2.p", "rb"))
+            # T0_2 = pickle.load(open("T0_2.p", "rb"))
+            p2_0_sym= pickle.load(open("p2_0_sym.p", "rb"))
             R0_3_inv = pickle.load(open("R0_3_inv.p", "rb"))
+            R0_g_sym = pickle.load(open("R0_g_sym.p", "rb"))
             print("-----------------------------------------")
-            print("Transformation matrices have been loaded!")
-            print("-----------------------------------------")           
+            print("Transformation matrices have been loaded!")         
         
         # Compensation matix for wrist center calculation
-        R_corr = rot_z(pi) * rot_y(-pi/2)
-        print("Calculating Inverse kinematrics")
+        
+        print("Calculating Inverse kinematrics...")
 
         for x in xrange(0, len(req.poses)):
             # IK code starts here
@@ -196,17 +218,18 @@ def handle_calculate_IK(req):
      
             # Calculate joint angles using Geometric IK method
             pg_0 = Matrix([[px],[py],[pz]])
-            R0_g_value = R0_g_symp.evalf(subs={r: roll, p: pitch, y: yaw})
+            R0_g_value = R0_g_sym.evalf(subs={r: roll, p: pitch, y: yaw})
             R0_g = R0_g_value[0:3,0:3]
 
             # Calculate wrist center and theta1
-            pwc_0 = pg_0 - (0.303) * R0_g * R_corr * Matrix([[0],[0],[1]])
-            # pwc_0 = pg_0 - (0.303) * R0_g * Matrix([[0],[0],[1]])
+            # R_corr = rot_z(pi) * rot_y(-pi/2)
+            # Cause R_corr * Matrix([[0],[0],[1]]) = Matrix([[1],[0],[0]]),
+            # So Matrix([[1],[0],[0]]) is used here.
+            pwc_0 = pg_0 - (0.303) * R0_g * Matrix([[1],[0],[0]])
             theta1 = atan2(pwc_0[1], pwc_0[0])
 
             # Calculate theta3
-            p2_sym = T0_2 * Matrix([0,0,0,1])
-            p2_0 = p2_sym.evalf(subs={q1: theta1})
+            p2_0 = p2_0_sym.evalf(subs={q1: theta1})
             pwc_2 = pwc_0 - p2_0[0:3,:]
 
             l23 = a2
@@ -215,7 +238,6 @@ def handle_calculate_IK(req):
             theta3_1 = atan2(a3,d4)
             c235 = (np.sum(np.square(pwc_2)) - l23**2 - l35**2) / (2*l23*l35)
             theta3_phi = atan2(sqrt(1-c235**2), c235)
-            # theta3_phi = atan2(-sqrt(1-c235**2), c235)
             theta3 = (theta3_phi + theta3_1 - pi/2).subs(s)
 
             # Calculate theta2
@@ -224,21 +246,48 @@ def handle_calculate_IK(req):
             theta2_phi = atan2(sqrt(1 - c523**2), c523)
             theta2 = (pi/2 - (theta2_phi + theta2_out)).subs(s)
 
-            # Calculate theta4, 5, 6
-            R0_3_inv_value = R0_3_inv.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
-            R3_6 =  R0_3_inv_value * R0_g
+            # if x > 0: #len(req.poses)/2:
+            #     # Calculate theta4, 5, 6
+            #     R3_6_sym = R0_3_inv * R0_g
+            #     R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
+            #     # R3_6_corr = R3_6 * rot_x(pi/2)
+            #     # alpha, beta, gamma = Euler_angles_from_matrix_yzy(R3_6_corr)
+            #     # alpha, beta, gamma = Euler_angles_from_matrix_zyz(R3_6)
+            #     # theta4 = alpha
+            #     # theta5 = beta
+            #     # theta6 = gamma
+                
+            #     alpha, beta, gamma = Euler_angles_from_matrix_xyz(R3_6)
+            #     # gamma = (np.abs(gamma)%(2*np.pi)) * np.sign(gamma)
+            #     theta4 = gamma
+            #     theta5 = beta
+            #     theta6 = alpha
+            # else:
+            #     # theta4, theta5, theta6 = 0,0,0
+            #     None
 
-            alpha, beta, gamma = Euler_angles_from_rotation_matrix(R3_6)
-            theta4 = gamma
-            theta5 = beta
-            theta6 = alpha
-        
+            R3_6_sym = R0_3_inv * R0_g
+            R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
+            R3_6_np = np.array(R3_6).astype(np.float64)
+            theta4, theta5, theta6 = tf.transformations.euler_from_matrix(R3_6_np, axes = 'sxyx')
+            # theta4 = theta4 
+            # theta5 = theta5 
+
+            # R3_6_ha = R3_6.row_join(Matrix([[0.],[0.],[0.]]))
+            # R3_6_ha = R3_6_ha.col_join(Matrix([[0., 0., 0., 1.]]))
+           
+            
+
+
             # Populate response for the IK request
             # In the next line replace theta1,theta2...,theta6 by your joint angle variables
 	    joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]
 	    joint_trajectory_list.append(joint_trajectory_point)
         print("Inverse kinematics calculation has been done!")
         print("-----------------------------------------")
+        print("theta4: ", theta4 * r2d)
+        print("theta5: ", theta5 * r2d)
+        print("theta6: ", theta6 * r2d)
         rospy.loginfo("\nlength of Joint Trajectory List: %s" % len(joint_trajectory_list))
         # rospy.loginfo("Inverse kinematics calculation has been done!")
         # rospy.loginfo("Px, Py, Pz %s %s %s" , px , py , pz)
