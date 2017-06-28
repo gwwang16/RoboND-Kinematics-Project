@@ -269,9 +269,10 @@ def handle_calculate_IK(req):
             R3_6_sym = R0_3_inv * R0_g
             R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
             R3_6_np = np.array(R3_6).astype(np.float64)
-            theta4, theta5, theta6 = tf.transformations.euler_from_matrix(R3_6_np, axes = 'sxyx')
-            # theta4 = theta4 
-            # theta5 = theta5 
+            theta4, theta5, theta6 = tf.transformations.euler_from_matrix(R3_6_np, axes = 'ryzx')
+            theta4 = theta4 
+            theta5 = theta5 - pi/2
+            theta6 = theta6 - pi/2
 
             # R3_6_ha = R3_6.row_join(Matrix([[0.],[0.],[0.]]))
             # R3_6_ha = R3_6_ha.col_join(Matrix([[0., 0., 0., 1.]]))
