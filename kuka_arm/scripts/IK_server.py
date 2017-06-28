@@ -246,39 +246,16 @@ def handle_calculate_IK(req):
             theta2_phi = atan2(sqrt(1 - c523**2), c523)
             theta2 = (pi/2 - (theta2_phi + theta2_out)).subs(s)
 
-            # if x > 0: #len(req.poses)/2:
-            #     # Calculate theta4, 5, 6
-            #     R3_6_sym = R0_3_inv * R0_g
-            #     R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
-            #     # R3_6_corr = R3_6 * rot_x(pi/2)
-            #     # alpha, beta, gamma = Euler_angles_from_matrix_yzy(R3_6_corr)
-            #     # alpha, beta, gamma = Euler_angles_from_matrix_zyz(R3_6)
-            #     # theta4 = alpha
-            #     # theta5 = beta
-            #     # theta6 = gamma
-                
-            #     alpha, beta, gamma = Euler_angles_from_matrix_xyz(R3_6)
-            #     # gamma = (np.abs(gamma)%(2*np.pi)) * np.sign(gamma)
-            #     theta4 = gamma
-            #     theta5 = beta
-            #     theta6 = alpha
-            # else:
-            #     # theta4, theta5, theta6 = 0,0,0
-            #     None
-
-            R3_6_sym = R0_3_inv * R0_g
-            R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
-            R3_6_np = np.array(R3_6).astype(np.float64)
-            theta4, theta5, theta6 = tf.transformations.euler_from_matrix(R3_6_np, axes = 'ryzx')
-            theta4 = theta4 
-            theta5 = theta5 - pi/2
-            theta6 = theta6 - pi/2
-
-            # R3_6_ha = R3_6.row_join(Matrix([[0.],[0.],[0.]]))
-            # R3_6_ha = R3_6_ha.col_join(Matrix([[0., 0., 0., 1.]]))
-           
-            
-
+            if x >= (len(req.poses)-1):
+                R3_6_sym = R0_3_inv * R0_g
+                R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
+                R3_6_np = np.array(R3_6).astype(np.float64)
+                theta4, theta5, theta6 = tf.transformations.euler_from_matrix(R3_6_np, axes = 'ryzx')
+                # theta4 = theta4 
+                theta5 = theta5 - np.pi/2
+                theta6 = theta6 - np.pi/2
+            else:
+                theta4, thet5, theta6 = 0, np.pi/4, 0
 
             # Populate response for the IK request
             # In the next line replace theta1,theta2...,theta6 by your joint angle variables
@@ -300,6 +277,7 @@ def IK_server():
     rospy.init_node('IK_server')
     s = rospy.Service('calculate_ik', CalculateIK, handle_calculate_IK)
     print "Ready to receive an IK request"
+
     rospy.spin()
 
 if __name__ == "__main__":
