@@ -69,7 +69,9 @@ def handle_calculate_IK(req):
         #     rot_z = Rz.row_join(M1)
         #     rot_z = rot_z.col_join(M2)
         #     return rot_z
+        
         def rot_x(q):
+            ''' Rotation matrix along x axis'''
             R_x = Matrix([[      1,      0,      0],
                           [      0, cos(q), -sin(q)],
                           [      0, sin(q),  cos(q)]])
@@ -77,6 +79,7 @@ def handle_calculate_IK(req):
             return R_x
     
         def rot_y(q):
+            ''' Rotation matrix along y axis'''
             R_y = Matrix([[ cos(q),     0, sin(q)],
                           [      0,     1,      0],
                           [-sin(q),     0, cos(q)]])
@@ -84,15 +87,16 @@ def handle_calculate_IK(req):
             return R_y
 
         def rot_z(q):
+            ''' Rotation matrix along z axis'''
             R_z = Matrix([[ cos(q),-sin(q), 0],
                           [ sin(q), cos(q), 0],
                           [      0,      0, 1]])
             
             return R_z
 
-        def Euler_angles_from_matrix_URDF(R):
-            '''Input R is 3x3 rotation matrix, output are Euler angles :q4, q5, q6
-            '''
+        def Euler_angles_from_matrix_URDF(R, angles_pre):
+            ''' Calculate q4-6 from R3_6 rotation matrix
+            Input R is 3x3 rotation matrix, output are Euler angles :q4, q5, q6'''
             r12, r13 = R[0,1], R[0,2]
             r21, r22, r23 = R[1,0], R[1,1], R[1,2] 
             r32, r33 = R[2,1], R[2,2]
@@ -105,18 +109,18 @@ def handle_calculate_IK(req):
                 q4 = atan2(r33, -r13)
                 q6 = atan2(-r22, r21)
             else:
-                q6 = 0
+                q6 = angles_pre[5]
                 if r23 == -1:
                     q5 = 0
                     q4 = q6 + atan2(-r12, -r32)
                 else:
                     q5 = 0
-                    q4 = q6 + atan2(r12, r32)
+                    q4 = -q6 + atan2(r12, r32)
 
             return np.float64(q4), np.float64(q5), np.float64(q6)
-        
 
         def angle_simplify(theta):
+            ''' Transfer the theta into [-2pi, 2pi]'''
             return np.float64(np.abs(theta)%(2*np.pi) * np.sign(theta))
         
 
@@ -178,10 +182,10 @@ def handle_calculate_IK(req):
             # T0_G = simplify(T0_6 * T6_7)
             # R_corr = rot_z(pi) * rot_y(-pi/2)
             #T_total = simplify(T0_G * R_corr)
-            T3_6 = simplify(T3_4*T4_5*T5_6)
+            # T3_6 = simplify(T3_4*T4_5*T5_6)
             R0_g_sym = simplify(rot_z(y) * rot_y(p) * rot_x(r))
             # pickle.dump(T0_2, open("T0_2.p", "wb"))
-            pickle.dump(T3_6, open("T3_6.p", "wb"))
+            # pickle.dump(T3_6, open("T3_6.p", "wb"))
             pickle.dump(p2_0_sym, open("p2_0_sym.p", "wb"))
             pickle.dump(R0_3_inv, open("R0_3_inv.p", "wb"))
             pickle.dump(R0_g_sym, open("R0_g_sym.p", "wb"))
@@ -190,7 +194,7 @@ def handle_calculate_IK(req):
             print("-----------------------------------------")
         else:
             # T0_2 = pickle.load(open("T0_2.p", "rb"))
-            T3_6 = pickle.load(open("T3_6.p", "rb"))
+            # T3_6 = pickle.load(open("T3_6.p", "rb"))
             p2_0_sym= pickle.load(open("p2_0_sym.p", "rb"))
             R0_3_inv = pickle.load(open("R0_3_inv.p", "rb"))
             R0_g_sym = pickle.load(open("R0_g_sym.p", "rb"))
@@ -224,7 +228,7 @@ def handle_calculate_IK(req):
 
             # Calculate wrist center and theta1
             pwc_0 = pg_0 - (0.303) * R0_g * R_corr * Matrix([[0],[0],[1]])
-            theta1 = atan2(pwc_0[1], pwc_0[0])
+            theta1 = np.float64(atan2(pwc_0[1], pwc_0[0]))
 
             # Calculate theta3
             p2_0 = p2_0_sym.evalf(subs={q1: theta1})
@@ -236,18 +240,20 @@ def handle_calculate_IK(req):
             theta3_1 = atan2(a3,d4)
             c235 = (np.sum(np.square(pwc_2)) - l23**2 - l35**2) / (2*l23*l35)
             theta3_phi = atan2(sqrt(1-c235**2), c235)
-            theta3 = (theta3_phi + theta3_1 - pi/2).subs(s)
+            theta3 = np.float64((theta3_phi + theta3_1 - pi/2).subs(s))
 
             # Calculate theta2
             theta2_out = atan2(pwc_2[2], sqrt(pwc_2[0]**2 + pwc_2[1]**2))
             c523 = (-l35**2 + l23**2 + p25**2) / (2*l23 * p25)
             theta2_phi = atan2(sqrt(1 - c523**2), c523)
-            theta2 = (pi/2 - (theta2_phi + theta2_out)).subs(s)
+            theta2 = np.float64((pi/2 - (theta2_phi + theta2_out)).subs(s))
 
             # Calculate 4-6
             R3_6_sym = R0_3_inv * (R0_g*R_corr)
             R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
-            theta4, theta5, theta6 = Euler_angles_from_matrix_URDF(R3_6)
+            theta4, theta5, theta6 = Euler_angles_from_matrix_URDF(R3_6, angles_pre)
+
+            angles_pre = (theta1, theta2, theta3, theta4, theta5, theta6)
 
 
         # Populate response for the IK request
@@ -256,12 +262,14 @@ def handle_calculate_IK(req):
 	    joint_trajectory_list.append(joint_trajectory_point)
         print("Inverse kinematics calculation has been done!")
         print("-----------------------------------------")
-        print("R3_6", R3_6)
+        # print("R3_6", R3_6)
+        print("theta1: ", theta1 * r2d)
+        print("theta2: ", theta2 * r2d)
+        print("theta3: ", theta3 * r2d)
         print("theta4: ", theta4 * r2d)
         print("theta5: ", theta5 * r2d)
         print("theta6: ", theta6 * r2d)
         rospy.loginfo("\nlength of Joint Trajectory List: %s" % len(joint_trajectory_list))
-        # rospy.loginfo("Inverse kinematics calculation has been done!")
         # rospy.loginfo("Px, Py, Pz %s %s %s" , px , py , pz)
         return CalculateIKResponse(joint_trajectory_list)
 
