@@ -51,7 +51,7 @@ def handle_calculate_IK(req):
         #     rot_x = Rx.row_join(M1)
         #     rot_x = rot_x.col_join(M2)
         #     return rot_x
-        # def rot_y(q):   
+        # def rot_y(q):
         #     M1 = Matrix([[0],[0],[0]])
         #     M2 = Matrix([[0, 0, 0, 1]])
         #     Ry = Matrix([[ cos(q),     0, sin(q)],
@@ -60,7 +60,7 @@ def handle_calculate_IK(req):
         #     rot_y = Ry.row_join(M1)
         #     rot_y = rot_y.col_join(M2)
         #     return rot_y
-        # def rot_z(q):   
+        # def rot_z(q):
         #     M1 = Matrix([[0],[0],[0]])
         #     M2 = Matrix([[0, 0, 0, 1]])
         #     Rz = Matrix([[ cos(q),-sin(q), 0],
@@ -90,59 +90,28 @@ def handle_calculate_IK(req):
             
             return R_z
 
-        def Euler_angles_from_matrix_xyz(R):
-            '''Input R is 3x3 matrix, output are alpha, beta and gamma
-            alpha: rotation angle along z axis,
-            beta: rotation angle along y axis
-            gamma: rotation angle along x axis'''
-
-            r11, r12, r13 = R[0,0], R[0,1], R[0,2]
-            r31, r32, r33 = R[2,0], R[2,1], R[2,2] 
-            r21 = R[1,0]
-            # Euler angles from rotation matrix
-            # beta = atan2(-r31, sqrt(r11**2 + r21**2))
-            # gamma = atan2(r32, r33)
-            # alpha = atan2(r21, r11)
-            if np.abs(r31) is not 1:
-                beta = atan2(-r31, sqrt(r11**2 + r21**2))
-                gamma = atan2(r32, r33)
-                alpha = atan2(r21, r11)
-            else:
-                alpha = 0
-                if r31 == -1:
-                    beta = pi/2
-                    gamma = alpha + atan2(r13, -r12)
-                else:
-                    beta = -pi/2
-                    gamma = -alpha + atan2(-r13, r12)
-
-            return alpha, beta, gamma
-
         def Euler_angles_from_matrix_URDF(R):
-            '''Input R is 3x3 matrix, output are alpha, beta and gamma
-            alpha: rotation angle along z axis,
-            beta: rotation angle along y axis
-            gamma: rotation angle along x axis'''
-
+            '''Input R is 3x3 rotation matrix, output are Euler angles :q4, q5, q6
+            '''
             r12, r13 = R[0,1], R[0,2]
             r21, r22, r23 = R[1,0], R[1,1], R[1,2] 
             r32, r33 = R[2,1], R[2,2]
-            # Euler angles from rotation matrix
-            q5 = atan2(sqrt(r13**2 + r33**2), r23)
-            q4 = atan2(r33, -r13)
-            q6 = atan2(-r22, r21)
-            # if np.abs(r23) is not 1:
-            #     q5 = atan2(r23, sqrt(r13**2 + r33**2))
-            #     q4 = atan2(r33, -r13)
-            #     q6 = atan2(-r22, r21)
-            # else:
-            #     q6 = 0
-            #     if r23 == -1:
-            #         q5 = pi/2
-            #         q4 = q6 + atan2(-r12, -r32)
-            #     else:
-            #         q5 = -pi/2
-            #         q4 = q6 + atan2(r12, r32)
+            # # Euler angles from rotation matrix
+            # q5 = atan2(sqrt(r13**2 + r33**2), r23)
+            # q4 = atan2(r33, -r13)
+            # q6 = atan2(-r22, r21)
+            if np.abs(r23) is not 1:
+                q5 = atan2(sqrt(r13**2 + r33**2), r23)
+                q4 = atan2(r33, -r13)
+                q6 = atan2(-r22, r21)
+            else:
+                q6 = 0
+                if r23 == -1:
+                    q5 = 0
+                    q4 = q6 + atan2(-r12, -r32)
+                else:
+                    q5 = 0
+                    q4 = q6 + atan2(r12, r32)
 
             return np.float64(q4), np.float64(q5), np.float64(q6)
         
@@ -207,28 +176,29 @@ def handle_calculate_IK(req):
             # T0_5 = simplify(T0_4 * T4_5)
             # T0_6 = simplify(T0_5 * T5_6)
             # T0_G = simplify(T0_6 * T6_7)
-
             # R_corr = rot_z(pi) * rot_y(-pi/2)
             #T_total = simplify(T0_G * R_corr)
             T3_6 = simplify(T3_4*T4_5*T5_6)
             R0_g_sym = simplify(rot_z(y) * rot_y(p) * rot_x(r))
             # pickle.dump(T0_2, open("T0_2.p", "wb"))
+            pickle.dump(T3_6, open("T3_6.p", "wb"))
             pickle.dump(p2_0_sym, open("p2_0_sym.p", "wb"))
             pickle.dump(R0_3_inv, open("R0_3_inv.p", "wb"))
             pickle.dump(R0_g_sym, open("R0_g_sym.p", "wb"))
-            pickle.dump(T3_6, open("T3_6.p", "wb"))
+            
             print("Transformation matrices have been saved!!")
             print("-----------------------------------------")
         else:
             # T0_2 = pickle.load(open("T0_2.p", "rb"))
+            T3_6 = pickle.load(open("T3_6.p", "rb"))
             p2_0_sym= pickle.load(open("p2_0_sym.p", "rb"))
             R0_3_inv = pickle.load(open("R0_3_inv.p", "rb"))
             R0_g_sym = pickle.load(open("R0_g_sym.p", "rb"))
-            T3_6 = pickle.load(open("T3_6.p", "rb"))
+            
             print("-----------------------------------------")
             print("Transformation matrices have been loaded!")         
         
-        # Compensation matix for wrist center calculation
+        # Compensation matix from URDF to world frame
         R_corr = rot_z(pi) * rot_y(-pi/2)
 
         print("Calculating Inverse kinematrics...")
@@ -274,14 +244,10 @@ def handle_calculate_IK(req):
             theta2_phi = atan2(sqrt(1 - c523**2), c523)
             theta2 = (pi/2 - (theta2_phi + theta2_out)).subs(s)
 
-            
+            # Calculate 4-6
             R3_6_sym = R0_3_inv * (R0_g*R_corr)
             R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
             theta4, theta5, theta6 = Euler_angles_from_matrix_URDF(R3_6)
-
-
-
-
 
 
         # Populate response for the IK request
@@ -305,7 +271,6 @@ def IK_server():
     rospy.init_node('IK_server')
     s = rospy.Service('calculate_ik', CalculateIK, handle_calculate_IK)
     print "Ready to receive an IK request"
-
     rospy.spin()
 
 if __name__ == "__main__":
