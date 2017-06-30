@@ -21,7 +21,7 @@ import numpy as np
 from sympy import symbols, cos, sin, pi, simplify, sqrt, atan2
 from sympy.matrices import Matrix
 import pickle, os
-
+import time
 
 def handle_calculate_IK(req):
     rospy.loginfo("Received %s eef-poses from the plan" % len(req.poses))
@@ -206,7 +206,9 @@ def handle_calculate_IK(req):
         R_corr = rot_z(pi) * rot_y(-pi/2)
 
         print("Calculating Inverse kinematrics...")
+        loop_start_time = time.time()
         for x in xrange(0, len(req.poses)):
+            loop_current_time = time.time()
             # IK code starts here
             joint_trajectory_point = JointTrajectoryPoint()
             
@@ -224,10 +226,10 @@ def handle_calculate_IK(req):
             # Calculate joint angles using Geometric IK method
             pg_0 = Matrix([[px],[py],[pz]])
             R0_g_value = R0_g_sym.evalf(subs={r: roll, p: pitch, y: yaw})
-            R0_g = R0_g_value[0:3,0:3] 
+            R0_g = R0_g_value[0:3,0:3] * R_corr 
 
             # Calculate wrist center and theta1
-            pwc_0 = pg_0 - (0.303) * R0_g * R_corr * Matrix([[0],[0],[1]])
+            pwc_0 = pg_0 - (0.303) * R0_g * Matrix([[0],[0],[1]])
             theta1 = np.float64(atan2(pwc_0[1], pwc_0[0]))
 
             # Calculate theta3
@@ -249,11 +251,12 @@ def handle_calculate_IK(req):
             theta2 = np.float64((pi/2 - (theta2_phi + theta2_out)).subs(s))
 
             # Calculate 4-6
-            R3_6_sym = R0_3_inv * (R0_g*R_corr)
+            R3_6_sym = R0_3_inv * R0_g
             R3_6 = R3_6_sym.evalf(subs={q1:theta1, q2:theta2, q3:theta3})
             theta4, theta5, theta6 = Euler_angles_from_matrix_URDF(R3_6, angles_pre)
 
             angles_pre = (theta1, theta2, theta3, theta4, theta5, theta6)
+            print "Calculating trajectory:", x, "Time cost:", round(time.time()-loop_current_time, 4)
 
 
         # Populate response for the IK request
@@ -261,14 +264,15 @@ def handle_calculate_IK(req):
 	    joint_trajectory_point.positions = [theta1, theta2, theta3, theta4, theta5, theta6]
 	    joint_trajectory_list.append(joint_trajectory_point)
         print("Inverse kinematics calculation has been done!")
+        print "Total time:", round(time.time() - loop_start_time, 4)
         print("-----------------------------------------")
         # print("R3_6", R3_6)
-        print("theta1: ", theta1 * r2d)
-        print("theta2: ", theta2 * r2d)
-        print("theta3: ", theta3 * r2d)
-        print("theta4: ", theta4 * r2d)
-        print("theta5: ", theta5 * r2d)
-        print("theta6: ", theta6 * r2d)
+        print "theta1: ", theta1 * r2d
+        print "theta2: ", theta2 * r2d
+        print "theta3: ", theta3 * r2d
+        print "theta4: ", theta4 * r2d
+        print "theta5: ", theta5 * r2d
+        print "theta6: ", theta6 * r2d
         rospy.loginfo("\nlength of Joint Trajectory List: %s" % len(joint_trajectory_list))
         # rospy.loginfo("Px, Py, Pz %s %s %s" , px , py , pz)
         return CalculateIKResponse(joint_trajectory_list)
