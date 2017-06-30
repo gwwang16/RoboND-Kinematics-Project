@@ -132,13 +132,13 @@ This position error is `0.00171302362221487`.
 
 We have calculated our FK correctly, let's do inverse kinematics now.
 
-1) Find the location of the WC relative to the base frame `pwc_0`.
+1) Find the location of the WC relative to the base frame `pwc_0`. The wrist center is `joint 5`.
 
-$pwc_0 = pg_0 - d_7 \dot {}^0_6R \begin{bmatrix}0 \\ 0 \\ 1\end{bmatrix} =\begin{bmatrix}p_x\\p_y\\p_z\end{bmatrix} - d \dot{}^0_6R\begin{bmatrix}0 \\ 0 \\ 1\end{bmatrix}$
+$pwc_0 = pg_0 - d \dot {}^0_6R \begin{bmatrix}0 \\ 0 \\ 1\end{bmatrix} =\begin{bmatrix}p_x\\p_y\\p_z\end{bmatrix} - d_G \dot{}^0_6R\begin{bmatrix}0 \\ 0 \\ 1\end{bmatrix}$
 
 2) Find `theta1`
 
-$\theta_1$ is quite straightforward, `theta1 = atan2(pwc_0[1], pwc_0[0]`
+$\theta_1$ is quite straightforward, `theta1 = atan2(pwc_y, pwc_x`
 
 ![lt text][q23]
 
@@ -153,6 +153,8 @@ $\theta_1$ is quite straightforward, `theta1 = atan2(pwc_0[1], pwc_0[0]`
 ​	$\theta_{32} = \frac{l_{25}^2 - a_2^2 - l_{35}^2}{2 \times a_2 \times l_{35} }$
 
 ​	$\theta_3 = \theta_{32} - \theta_{31} - \frac{\pi}{2}$	
+
+**Note:** $x_c = \sqrt{pwc_x^2+pwc_y^2}$,  $ y_c = pwc_z$ 
 
 4) Find `theta2`
 
@@ -293,7 +295,20 @@ We can implement our code into `IK_server.py` now!
 
 #### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
 
-With the above method, my IK code completes 10/10 pick and place cycles. Here is the result video  https://youtu.be/KdBoLlqrd5A
+With the above method, my IK code completes 10/10 pick and place cycles. Here is the result video  https://youtu.be/KdBoLlqrd5A.
+
+**Note:** The discontinuous moving in this video has been solved using an additional conditional statement. Thanks the advice from @jafar_abdi in slack.
+
+
+    if sin(q5) < 0:
+        q4 = atan2(-r33, r13)
+        q6 = atan2(r22, -r21)
+    else:
+        q4 = atan2(r33, -r13)
+        q6 = atan2(-r22, r21)
+
+
+
 
 ![alt text][result]
 
@@ -313,4 +328,4 @@ There are various things can be improved further, list a few,
 
 2) The robot moves very slow and shakes in each planned fragment, tune their PID parameters might work, another possible thing is the ROS server cannot work timely to keep pace with the arm moving.
 
-3) The gripper link would rotate to -179 from 0 or to 179 from -1, it costs discontinuous moving and costs more time. I'll solve this problem in next step.
+3) The IK calculating speed is quite slow using current method. I think the main problem is symbol calculation, even though I have put symbol calculation out of loop as possible. Some guys in slack have hardly any IK calculating time using `numpy` package only.  I'll use `numpy` instead of `sympy` if I confirm the calculation error is tiny.

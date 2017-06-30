@@ -106,16 +106,20 @@ def handle_calculate_IK(req):
             # q6 = atan2(-r22, r21)
             if np.abs(r23) is not 1:
                 q5 = atan2(sqrt(r13**2 + r33**2), r23)
-                q4 = atan2(r33, -r13)
-                q6 = atan2(-r22, r21)
+                if sin(q5) < 0:
+                    q4 = atan2(-r33, r13)
+                    q6 = atan2(r22, -r21)
+                else:
+                    q4 = atan2(r33, -r13)
+                    q6 = atan2(-r22, r21)
             else:
                 q6 = angles_pre[5]
-                if r23 == -1:
+                if r23 == 1:
                     q5 = 0
-                    q4 = q6 + atan2(-r12, -r32)
+                    q4 = -q6 + atan2(-r12, -r32)
                 else:
                     q5 = 0
-                    q4 = -q6 + atan2(r12, r32)
+                    q4 = q6 - atan2(r12, -r32)
 
             return np.float64(q4), np.float64(q5), np.float64(q6)
 
