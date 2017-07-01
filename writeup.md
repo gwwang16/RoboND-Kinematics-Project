@@ -150,7 +150,7 @@ $\theta_1$ is quite straightforward, `theta1 = atan2(pwc_y, pwc_x`
 
 ​	$l_{25} = \sqrt{x_c^2 + y_c^2}$
 
-​	$\theta_{32} = \frac{l_{25}^2 - a_2^2 - l_{35}^2}{2 \times a_2 \times l_{35} }$
+​	$\theta_{32} = arcos(\frac{l_{25}^2 - a_2^2 - l_{35}^2}{2 \times a_2 \times l_{35} })$
 
 ​	$\theta_3 = \theta_{32} - \theta_{31} - \frac{\pi}{2}$	
 
@@ -158,7 +158,7 @@ $\theta_1$ is quite straightforward, `theta1 = atan2(pwc_y, pwc_x`
 
 4) Find `theta2`
 
-​	$\theta_{22} = atan2(y_c, x_c)$
+​	$\theta_{22} = atan2(y_c, x_c)​$
 
 ​	$cos(\theta_{21}) = \frac{l_{35}^2 - a_2^2 - l_{25}^2}{2 \times a_2 \times l_{25}}$
 
