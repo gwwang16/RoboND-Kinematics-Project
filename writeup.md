@@ -164,7 +164,7 @@ $\theta_1$ is quite straightforward, `theta1 = atan2(pwc_y, pwc_x`
 
 ​	$\theta_{22} = atan2(y_c, x_c)​$
 
-​	$cos(\theta_{21}) = \frac{l_{35}^2 - a_2^2 - l_{25}^2}{2 \times a_2 \times l_{25}}$
+​	$cos(\theta_{21}) = \frac{-l_{35}^2 + a_2^2 + l_{25}^2}{2 \times a_2 \times l_{25}}$
 
 ​	$\theta_{21} = atan2(\sqrt{1-cos^2(\theta_{21})}, cos(\theta_{21}))$
 
