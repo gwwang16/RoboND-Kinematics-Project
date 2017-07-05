@@ -242,17 +242,17 @@ def handle_calculate_IK(req):
 
             l23 = a2
             l35 = sqrt(a3**2 + d4**2)
-            p25 = sqrt(np.sum(np.square(pwc_2)))
-            theta3_1 = atan2(a3,d4)
-            c235 = (np.sum(np.square(pwc_2)) - l23**2 - l35**2) / (2*l23*l35)
-            theta3_phi = atan2(sqrt(1-c235**2), c235)
-            theta3 = np.float64((theta3_phi + theta3_1 - pi/2).subs(s))
+            l25 = sqrt(np.sum(np.square(pwc_2)))
+            theta31 = atan2(a3,d4)
+            c235 = (l25**2 - l23**2 - l35**2) / (2*l23*l35)
+            theta32 = atan2(sqrt(1-c235**2), c235)
+            theta3 = np.float64((theta32 + theta31 - pi/2).subs(s))
 
             # Calculate theta2
-            theta2_out = atan2(pwc_2[2], sqrt(pwc_2[0]**2 + pwc_2[1]**2))
-            c523 = (-l35**2 + l23**2 + p25**2) / (2*l23 * p25)
-            theta2_phi = atan2(sqrt(1 - c523**2), c523)
-            theta2 = np.float64((pi/2 - (theta2_phi + theta2_out)).subs(s))
+            theta22 = atan2(pwc_2[2], sqrt(pwc_2[0]**2 + pwc_2[1]**2))
+            c523 = (-l35**2 + l23**2 + l25**2) / (2*l23 * l25)
+            theta21 = atan2(sqrt(1 - c523**2), c523)
+            theta2 = np.float64((pi/2 - (theta21 + theta22)).subs(s))
 
             # Calculate 4-6
             R3_6_sym = R0_3_inv * R0_g

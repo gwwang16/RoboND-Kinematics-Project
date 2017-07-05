@@ -154,21 +154,23 @@ $\theta_1$ is quite straightforward, `theta1 = atan2(pwc_y, pwc_x`
 
 ​	$l_{25} = \sqrt{x_c^2 + y_c^2}$
 
-​	$\theta_{32} = arcos(\frac{l_{25}^2 - a_2^2 - l_{35}^2}{2 \times a_2 \times l_{35} })$
+​	$cos(\theta_{32}) = \frac{l_{25}^2 - a_2^2 - l_{35}^2}{2 \times a_2 \times l_{35} }$
+
+​	$\theta_{32} = atan2(\sqrt{1- cos^2(\theta_{32})}, cos(\theta_{32}))$
 
 ​	$\theta_3 = \theta_{32} - \theta_{31} - \frac{\pi}{2}$	
 
-**Note:** $x_c = \sqrt{pwc_x^2+pwc_y^2}$,  $ y_c = pwc_z$ 
+**Note:** $x_c = \sqrt{pwc_x^2+pwc_y^2}$,  $ y_c = pwc_z$, `pwc` here is based on `joint2`. 
 
 4) Find `theta2`
 
-​	$\theta_{22} = atan2(y_c, x_c)​$
+​	$\theta_{22} = atan2(y_c, x_c)$
 
 ​	$cos(\theta_{21}) = \frac{-l_{35}^2 + a_2^2 + l_{25}^2}{2 \times a_2 \times l_{25}}$
 
 ​	$\theta_{21} = atan2(\sqrt{1-cos^2(\theta_{21})}, cos(\theta_{21}))$
 
-​	$\theta_2 = \theta_{21} + \theta_{22}$
+​	$\theta_2 = \frac{\pi}{2} - (\theta_{21} + \theta_{22})$
 
 5) Find `theta4, 5 and 6`
 
