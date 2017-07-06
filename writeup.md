@@ -99,7 +99,10 @@ T0_G = simplify(T0_6 * T6_7)
 T_total = T0_G * R_corr
 ```
 
-If we know the gripper pose, we can also obtain one transform matrix between `base_link` and `gripper_link`. Because `roll, pitch, yaw` are *extrinsic* rotation, hence
+If we know the gripper pose, we can also obtain one transform matrix between `base_link` and `gripper_link`. 
+
+Even though `roll, pitch, yaw` are terms in *intrinsic* rotation, the `roll, pitch, yaw` are calculated with `tf.transformations.euler_from_quaternion` with default rotation sequence from quaternion ('sxyz' is default setting) in this project code, hence *extrinsic* rotation is used here to calculate `Rrpy`.
+
 ```
 Rrpy = rot_yaw(y)* rot_pitch(p) * rot_roll(r) * R_corr
 ```
