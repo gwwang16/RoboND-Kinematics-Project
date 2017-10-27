@@ -1,3 +1,9 @@
+Video  https://youtu.be/KdBoLlqrd5A
+
+
+
+----
+
 # Robotic arm - Pick & Place project
 
 Make sure you are using robo-nd VM or have Ubuntu+ROS installed locally.
@@ -76,13 +82,13 @@ $ rosrun kuka_arm IK_server.py
 Once Gazebo and rviz are up and running, make sure you see following in the gazebo world:
 
 	- Robot
-	
+
 	- Shelf
-	
+
 	- Blue cylindrical target in one of the shelves
-	
+
 	- Dropbox right next to the robot
-	
+​	
 
 If any of these items are missing, report as an issue.
 
